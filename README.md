@@ -54,4 +54,4 @@ $ npm run test:cov
 
 ## Stay in touch
 
-- Author - [João Pedro](www.linkedin.com/in/joaopedrooliver)
+- Author - [João Pedro](https://www.linkedin.com/in/joaopedrooliver)
