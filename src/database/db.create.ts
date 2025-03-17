@@ -1,37 +1,27 @@
-import { Database } from 'sqlite3';
-import { checkDb } from './db.check';
+import { dbConnection } from './db.connect';
 
-const db = new Database('src/database/genpass.db', (err) => {
-  if (err) {
-    console.error('Erro ao conectar ao banco de dados:', err.message);
-    return false;
-  } else {
-    console.log('Conectado ao banco de dados SQLite');
-    return true;
-  }
-});
-
-// criação de db
 export class DbCreate {
   public async createDb(): Promise<void> {
     try {
-      const tableExists = await checkDb(db); 
-      if (!tableExists) {
-        db.serialize(() => {
-          db.run(
-            'CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT, pass TEXT, CHECK(length(pass) >= 6))',
-            (err) => {
-              if (err) {
-                console.error('Erro ao criar tabela:', err.message);
-              } else {
-                console.log('Tabela "users" criada ou já existe.');
-              }
-            }
-          );
-        });
-      }
+      
+      dbConnection.query(
+        `CREATE TABLE IF NOT EXISTS users (
+          id INT AUTO_INCREMENT PRIMARY KEY, 
+          name VARCHAR(255) NOT NULL, 
+          email VARCHAR(255) UNIQUE NOT NULL, 
+          pass VARCHAR(255) NOT NULL CHECK(LENGTH(pass) >= 6)
+        )`,
+        (err, results) => {
+          if (err) {
+            console.error('Erro ao criar tabela:', err.message);
+          } else {
+            console.log('Tabela "users" criada ou já existe.');
+            return results;
+          }
+        }
+      );
     } catch (err) {
-      console.error('Erro ao verificar a tabela:', err);
+      console.error('Erro ao criar banco de dados:', err);
     }
   }
 }

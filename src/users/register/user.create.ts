@@ -5,6 +5,7 @@ import { RegisterDto } from '../DTO/dto.register';
 import { DbMain } from 'src/database/db.main';
 import { Response } from 'express';
 import { PwdEncrypt } from "../DTO/dto.password";
+import { Cripto } from "../DTO/dto.cripto";
 
 @Controller("/register")
 export class UserCreate {
@@ -49,6 +50,7 @@ export class UserCreate {
           return res.status(HttpStatus.CREATED).json({
             status: "success",
             message: "Usuário criado com sucesso!",
+            hash: new Cripto(`${email}:${pass}`).crypt()
           });
         } else {
           return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({

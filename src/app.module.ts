@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
 import { UserModule } from './users/user.module';
 import { PwdGenModule } from './pwd/pwd.module';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
-  imports: [UserModule,PwdGenModule]
+  imports: [UserModule,PwdGenModule, ConfigModule.forRoot({ isGlobal: true })]
 })
 export class AppModule {}

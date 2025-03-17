@@ -1,7 +1,7 @@
 import { Controller, Injectable, Headers, UnauthorizedException, Get, HttpCode, HttpStatus, Post, Res } from '@nestjs/common';
-import { DbMain } from 'src/database/db.main';
 import { Cripto } from '../DTO/dto.cripto';
 import { PwdEncrypt } from '../DTO/dto.password';
+import { dbConnection } from 'src/database/db.connect';
 
 interface UserResponse {
     statusCode: Number,
@@ -78,11 +78,13 @@ export class UserLogin {
     
 
     private async findUserByEmail(email: string): Promise<any> {
-        const db = new DbMain();
         return new Promise((resolve, reject) => {
-            db.get('SELECT * FROM users WHERE email = ?', [email], (err, row) => {
-                if (err) reject(err);
-                resolve(row);
+            dbConnection.query('SELECT * FROM users WHERE email = ?', [email], (err, results) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(results[0] || null);
+                }
             });
         });
     }
