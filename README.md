@@ -48,6 +48,17 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
+## Run Docker
+
+! install docker on your device to run this commands.
+
+```bash
+# build docker
+$ docker build -t strongpass .
+# run docker
+$ docker run -p 3000:3000 strongpass
+```
+
 ## License
 
 [MIT](./LICENSE).
