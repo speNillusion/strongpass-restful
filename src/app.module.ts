@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { UserModule } from './users/user.module';
-import { PwdGenModule } from './pwd/pwd.module';
+import { PwdGenModule } from './pwdGen/pwd.module';
 import { ConfigModule } from '@nestjs/config';
 
 @Module({

@@ -15,7 +15,8 @@ export class PwdGenPass {
         const verify = await userLogin.GetResponse(authHeader); // anonymous call func
         const AleatoryClassification = randomUUID() // random ID
         const PassLong = new Cripto(AleatoryClassification).crypt() // criptografia base64
-        const LongPass = new PwdEncrypt(PassLong).crypt() //criptografia com sha256
+        var Longpass = new PwdEncrypt(PassLong);
+        var LongPass = await Longpass.crypt(10); //criptografia com sha256
 
 
         const response = {

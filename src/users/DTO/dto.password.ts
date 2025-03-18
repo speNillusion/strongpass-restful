@@ -7,7 +7,11 @@ export class PwdEncrypt {
         this.arg = arg;
     }
 
-    crypt(): string {
-        return createHash('sha256').update(this.arg).digest('hex');
+    crypt(security:number = 1): Promise<string> {
+        let hashs = this.arg;
+        for (let i = 0; i < security; i++) {
+            hashs = createHash('sha256').update(hashs).digest('hex');
+        }
+        return Promise.resolve(hashs);
     }
 }

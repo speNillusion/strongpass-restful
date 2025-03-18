@@ -14,6 +14,7 @@ interface UserResponse {
 @Injectable()
 @Controller("/login")
 export class UserLogin {
+    static GetResponse: any;
 
     @Get()
     @HttpCode(HttpStatus.OK)
@@ -40,7 +41,7 @@ export class UserLogin {
         }
 
         const cripto_pass = new PwdEncrypt(pass).crypt();
-        const isPasswordValid = await this.comparePasswords(cripto_pass, user.pass);
+        const isPasswordValid = await this.comparePasswords(await cripto_pass, user.pass);
 
         if (isPasswordValid) {
             return {
@@ -66,7 +67,7 @@ export class UserLogin {
 
     @Post('login')
     @HttpCode(HttpStatus.BAD_REQUEST)
-    async notUsePost(): Promise<object> {
+    private async notUsePost(): Promise<object> {
         return {
             status: 400,
             response: [
