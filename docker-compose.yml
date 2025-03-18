@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: Ejao9924
+      DB_NAME: genpass
+    depends_on:
+      - mysql
+    networks:
+      - minha-rede
+
+  mysql:
+    image: mysql:8
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: Ejao9924
+      MYSQL_DATABASE: genpass
+    ports:
+      - "3307:3306"
+    networks:
+      - minha-rede
+
+networks:
+  minha-rede:
+    driver: bridge

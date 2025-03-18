@@ -53,10 +53,8 @@ $ npm run test:cov
 ! install docker on your device to run this commands.
 
 ```bash
-# build docker
-$ docker build -t strongpass .
-# run docker
-$ docker run -p 3000:3000 strongpass
+# build docker and run container
+$ docker-compose up --build -d
 ```
 
 ## License
