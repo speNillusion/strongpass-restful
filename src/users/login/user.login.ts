@@ -2,11 +2,12 @@ import { Controller, Injectable, Headers, UnauthorizedException, Get, HttpCode, 
 import { Cripto } from '../DTO/dto.cripto';
 import { PwdEncrypt } from '../DTO/dto.password';
 import { dbConnection } from 'src/database/db.connect';
+import { Hash } from 'src/pwdGen/hash.user';
 
 interface UserResponse {
     statusCode: Number,
     message: string,
-    user: object,
+    acessToken: string,
     valid: boolean
 
 }
@@ -47,7 +48,7 @@ export class UserLogin {
             return {
                 statusCode: HttpStatus.OK, 
                 message: 'Login bem-sucedido', 
-                user,
+                acessToken: await Hash(user),
                 valid: true
             };
         } else {
@@ -65,7 +66,7 @@ export class UserLogin {
         }
     };
 
-    @Post('login')
+    @Post()
     @HttpCode(HttpStatus.BAD_REQUEST)
     private async notUsePost(): Promise<object> {
         return {

@@ -9,8 +9,10 @@ export class DbCreate {
           id INT AUTO_INCREMENT PRIMARY KEY, 
           name VARCHAR(255) NOT NULL, 
           email VARCHAR(255) UNIQUE NOT NULL, 
-          pass VARCHAR(255) NOT NULL CHECK(LENGTH(pass) >= 6)
+          pass VARCHAR(255) NOT NULL CHECK(LENGTH(pass) >= 6),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`,
+        
         (err, results) => {
           if (err) {
             console.error('Erro ao criar tabela:', err.message);

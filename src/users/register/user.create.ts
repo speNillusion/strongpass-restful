@@ -50,7 +50,7 @@ export class UserCreate {
           return res.status(HttpStatus.CREATED).json({
             status: "success",
             message: "Usuário criado com sucesso!",
-            hash: new Cripto(`${email}:${pass}`).crypt()
+            _hash: new Cripto(`${email}:${pass}`).crypt()
           });
         } else {
           return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
