@@ -1,33 +1,22 @@
-import { Controller, Injectable, Headers, Get, HttpCode, HttpStatus, Post, Query, Res } from '@nestjs/common';
-import { UserLogin } from 'src/users/login/user.login';
+import { Controller, Injectable, Headers, Get, HttpCode, HttpStatus, Post, Query, Res, Body } from '@nestjs/common';
 import { Response } from 'express';
+import { DbMain } from 'src/database/db.main';
+import { UserToken } from 'src/users/login/token/user.token';
 
 @Injectable()
 @Controller("/generate")
 export class PwdGenPass {
 
     @Get()
-    @HttpCode(HttpStatus.OK)
-    private async connectGen(@Res() res: Response, @Headers('authorization') authHeader: string, @Query('quant') quant?: number) {
-        const userLogin = new UserLogin();
-        await userLogin.GetResponse(authHeader);
-
-        if (quant && quant > 1000000) {
-            const response = {
-                statusCode: HttpStatus.BAD_REQUEST,
-                response: "Max Length is 1,000,000"
-            };
-            return res.status(HttpStatus.BAD_REQUEST).json(response);
+    @HttpCode(HttpStatus.METHOD_NOT_ALLOWED)
+    private async notUseGet(): Promise<object> {
+        return {
+            statusCode: HttpStatus.METHOD_NOT_ALLOWED,
+            response: [
+                "Você não está autorizado.",
+                "Essa rota não possui GET como método."
+            ]
         };
-
-        const strongPass = await this.gerarSenha(quant || 64);
-
-        const response = {
-            statusCode: HttpStatus.OK,
-            passwordGenerated: strongPass
-        };
-
-        return res.status(HttpStatus.OK).json(response);
     }
 
     private async gerarSenha(quant: number = 64): Promise<string> {
@@ -41,14 +30,37 @@ export class PwdGenPass {
     }
 
     @Post()
-    @HttpCode(HttpStatus.METHOD_NOT_ALLOWED)
-    private async notUsePost(): Promise<object> {
-        return {
-            statusCode: HttpStatus.METHOD_NOT_ALLOWED,
-            response: [
-                "Você não está autorizado.",
-                "Essa rota não possui POST como método."
-            ]
+    @HttpCode(HttpStatus.OK)
+    private async connectGen(@Res() res: Response, @Headers('authorization') authHeader: string, @Body('email') email: string, @Query('quant') quant?: number) {
+        const userId = new UserToken();
+        const dbMain = new DbMain();
+        const tokenSecretKey: string = await dbMain.getKey(email);
+        const isValid = await userId.verifyToken(authHeader.split(' ')[1], tokenSecretKey);
+
+        if (quant && quant > 1000000) {
+            const response = {
+                statusCode: HttpStatus.BAD_GATEWAY,
+                response: "Max Length is 1,000,000"
+            };
+            return res.status(HttpStatus.BAD_GATEWAY).json(response);
         };
+
+        if (!isValid) {
+            const response = {
+                statusCode: HttpStatus.UNAUTHORIZED,
+                response: "not valid"
+            };
+            return res.status(HttpStatus.UNAUTHORIZED).json(response);
+        };
+
+        const strongPass = await this.gerarSenha(quant || 64);
+
+        const response = {
+            statusCode: HttpStatus.OK,
+            passwordGenerated: strongPass
+        };
+
+        return res.status(HttpStatus.OK).json(response);
     }
+    
 }

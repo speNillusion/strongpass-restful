@@ -10,7 +10,8 @@ export class DbCreate {
           name VARCHAR(255) NOT NULL, 
           email VARCHAR(255) UNIQUE NOT NULL, 
           pass VARCHAR(255) NOT NULL CHECK(LENGTH(pass) >= 6),
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          token_key VARCHAR(255) NOT NULL
         )`,
         
         (err, results) => {

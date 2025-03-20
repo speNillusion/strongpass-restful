@@ -44,7 +44,7 @@ export class UserCreate {
     try {
       if (name && email && pass) {
         const cripto_pass = new PwdEncrypt(pass).crypt();
-        const create = await db.pushDb(name, email, await cripto_pass);
+        const create = await db.pushDb(name, email, await cripto_pass, await new PwdEncrypt(new Cripto(`${email}:${pass}`).crypt()).crypt());
         
         if (create) {
           return res.status(HttpStatus.CREATED).json({

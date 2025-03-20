@@ -26,11 +26,37 @@ export class DbMain {
     });
   }
 
-  public async pushDb(nome: string, email: string, pass: string): Promise<boolean> {
+  public async getKey(email: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      dbConnection.query('SELECT * FROM users WHERE email = ?', [email], (err, results) => {
+        if (err) {
+          reject(err);
+        } else {
+          let key = results[0].token_key;
+          resolve(key || null);
+        }
+      });
+    });
+  }
+
+  public async getId(email: string): Promise<number> {
+    return new Promise((resolve, reject) => {
+      dbConnection.query('SELECT * FROM users WHERE email = ?', [email], (err, results) => {
+        if (err) {
+          reject(err);
+        } else {
+          let id = results[0].id;
+          resolve(id || null);
+        }
+      });
+    });
+  }
+
+  public async pushDb(nome: string, email: string, pass: string, token_key: string): Promise<boolean> {
     return new Promise((resolve, reject) => {
       dbConnection.query(
-        'INSERT INTO users (name, email, pass) VALUES (?, ?, ?)',
-        [nome, email, pass],
+        'INSERT INTO users (name, email, pass, token_key) VALUES (?, ?, ?, ?)',
+        [nome, email, pass, token_key],
         (err, results) => {
           if (err) {
             console.error('Erro ao inserir dados:', err.message);

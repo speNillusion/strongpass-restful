@@ -2,7 +2,8 @@ import { Controller, Injectable, Headers, UnauthorizedException, Get, HttpCode, 
 import { Cripto } from '../DTO/dto.cripto';
 import { PwdEncrypt } from '../DTO/dto.password';
 import { dbConnection } from 'src/database/db.connect';
-import { Hash } from 'src/pwdGen/hash.user';
+import { DbMain } from 'src/database/db.main';
+import { UserToken } from './token/user.token';
 
 interface UserResponse {
     statusCode: Number,
@@ -41,14 +42,21 @@ export class UserLogin {
             throw new UnauthorizedException('Email não encontrado');
         }
 
-        const cripto_pass = new PwdEncrypt(pass).crypt();
-        const isPasswordValid = await this.comparePasswords(await cripto_pass, user.pass);
+        const criptoPass = new PwdEncrypt(pass).crypt();
+        const isPasswordValid = await this.comparePasswords(await criptoPass, user.pass);
+
+        const dbMain = new DbMain();
+
+        const tokenSecretKey: string = await dbMain.getKey(email);
+        const clientId: number = await dbMain.getId(email);
+
+        const acessTk = await new UserToken().generateToken(clientId, tokenSecretKey);
 
         if (isPasswordValid) {
             return {
                 statusCode: HttpStatus.OK, 
                 message: 'Login bem-sucedido', 
-                acessToken: await Hash(user),
+                acessToken: acessTk,
                 valid: true
             };
         } else {
