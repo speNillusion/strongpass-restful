@@ -28,20 +28,13 @@ export class DbMain {
 
   public async getKey(email: string): Promise<string> {
     return new Promise((resolve, reject) => {
-      dbConnection.query('SELECT token_key FROM users WHERE email = ?', [email], (err, results: any[]) => {
+      dbConnection.query('SELECT * FROM users WHERE email = ?', [email], (err, results: any[]) => {
         if (err) {
-          console.error('Error fetching token key:', err.message);
           reject(err);
-          return;
+        } else {
+          let key = results[0].token_key;
+          resolve(key || '');
         }
-        
-        if (!results || results.length === 0) {
-          resolve('');
-          return;
-        }
-
-        const key = results[0].token_key;
-        resolve(key || '');
       });
     });
   }

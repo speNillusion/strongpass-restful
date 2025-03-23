@@ -1,27 +1,47 @@
 import * as jwt from 'jsonwebtoken';
 
+interface TokenPayload {
+    userId: number;
+    iat?: number;
+    exp?: number;
+}
 
 interface IToken {
     generateToken(userId: number, secretKey: string): Promise<string>;
-    verifyToken(token: string, secretKey: string): Promise<boolean>;
+    verifyToken(token: string, secretKey: string): Promise<TokenPayload | null>;
 }
 
 export class UserToken implements IToken {
+    private readonly TOKEN_EXPIRATION = '1h';
 
-    public async verifyToken(token: string, secretKey: string): Promise<any> {
+    public async verifyToken(token: string, secretKey: string): Promise<TokenPayload | null> {
         try {
-            return jwt.verify(token, secretKey);
+            console.log('Verifying token:', token);
+            const decoded = jwt.verify(token, secretKey) as TokenPayload;
+            return decoded;
         } catch (error) {
-            console.log(error)
-            return false;
+            if (error instanceof jwt.JsonWebTokenError) {
+                // Handle specific JWT errors if needed
+                console.error('JWT verification failed:', error.message);
+            } else {
+                console.error('Unexpected error during token verification:', error);
+            }
+            return null;
         }
-    };
+    }
 
     public async generateToken(userId: number, secretKey: string): Promise<string> {
         try {
-            return jwt.sign({ userId: userId }, secretKey, { expiresIn: '1h' });
+            const payload: TokenPayload = { userId };
+            const token = jwt.sign(payload, secretKey, { 
+                expiresIn: this.TOKEN_EXPIRATION,
+                algorithm: 'HS256' // Explicitly specify the algorithm
+            });
+            
+            return token;
         } catch (error) {
-            return '';
+            console.error('Token generation failed:', error);
+            throw new Error('Failed to generate token');
         }
     }
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Post, HttpCode, HttpStatus, Res, Get } from "@nestjs/common";
+import { Body, Controller, Post, HttpCode, HttpStatus, Res, Get, Injectable } from "@nestjs/common";
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import { RegisterDto } from '../DTO/dto.register';
@@ -7,82 +7,110 @@ import { Response } from 'express';
 import { PwdEncrypt } from "../DTO/dto.password";
 import { Cripto } from "../DTO/dto.cripto";
 
+interface IUserResponse {
+  status: string;
+  message: string;
+  _hash?: string;
+  errors?: string[];
+}
+
+@Injectable()
 @Controller("/register")
 export class UserCreate {
+  constructor(private readonly dbMain: DbMain) {}
 
   @Get()
-  @HttpCode(HttpStatus.BAD_REQUEST)
-  async getUser(): Promise<object> {
-    return { 
-        status: 400,
-        response: [
-           "Você não está autorizado.",
-           "Essa Rota não possui GET como método."
-        ]
-    }
+  @HttpCode(HttpStatus.METHOD_NOT_ALLOWED)
+  async getUser(): Promise<IUserResponse> {
+    return {
+      status: 'error',
+      message: 'GET method is not supported for this endpoint'
+    };
   }
   
   @Post()
-  @HttpCode(HttpStatus.OK)
-  async createUser(@Body() body: RegisterDto, @Res() res: Response) {
-    // Validação de dados
-    const user = plainToInstance(RegisterDto, body);
-    const errors = await this.validate(user);
-    
-    if (errors.length > 0) {
-      return res.status(HttpStatus.BAD_REQUEST).json({
-        status: 'error',
-        message: 'Dados inválidos',
-        errors,
-      });
-    }
-  
-    const { name, email, pass } = body;
-
-    const db = new DbMain();
-    
+  @HttpCode(HttpStatus.CREATED)
+  async createUser(@Body() body: RegisterDto, @Res() res: Response): Promise<Response> {
     try {
-      if (name && email && pass) {
-        const cripto_pass = new PwdEncrypt(pass).crypt();
-        const create = await db.pushDb(name, email, await cripto_pass, await new PwdEncrypt(new Cripto(`${email}:${pass}`).crypt()).crypt());
-        
-        if (create) {
-          return res.status(HttpStatus.CREATED).json({
-            status: "success",
-            message: "Usuário criado com sucesso!",
-            _hash: new Cripto(`${email}:${pass}`).crypt()
-          });
-        } else {
-          return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
-            status: 'error',
-            message: 'Erro ao criar usuário',
-          });
-        }
-      } else {
-        return res.status(HttpStatus.BAD_REQUEST).json({
-          status: 'error',
-          message: 'Dados ausentes (nome, email, ou senha)',
-        });
+      const validationErrors = await this.validateUserData(body);
+      if (validationErrors.length > 0) {
+        return this.sendErrorResponse(res, HttpStatus.BAD_REQUEST, 'Invalid data', validationErrors);
       }
-    } catch (error) {
-      console.error('Erro no processo de criação de usuário:', error);
-      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
-        status: 'error',
-        message: 'Erro interno',
-        error: error.message,
+
+      const { name, email, pass } = body;
+      if (!this.areRequiredFieldsPresent(name, email, pass)) {
+        return this.sendErrorResponse(
+          res, 
+          HttpStatus.BAD_REQUEST, 
+          'Missing required fields (name, email, or password)'
+        );
+      }
+
+      const encryptedData = await this.encryptUserData(email, pass);
+      const userCreated = await this.dbMain.pushDb(
+        name,
+        email,
+        encryptedData.password,
+        encryptedData.hash
+      );
+
+      if (!userCreated) {
+        return this.sendErrorResponse(
+          res,
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          'Failed to create user'
+        );
+      }
+
+      return res.status(HttpStatus.CREATED).json({
+        status: "success",
+        message: "User created successfully",
+        _hash: encryptedData.originalHash
       });
+
+    } catch (error) {
+      console.error('Error in user creation process:', error);
+      return this.sendErrorResponse(
+        res,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        'Internal server error',
+        [error.message]
+      );
     }
   }
 
-  private async validate(dto: RegisterDto): Promise<string[]> {
-    const errors = await validate(dto);
-    const errorMessages = errors.map(err => {
-      if (err.constraints) {
-        return `${err.property}: ${Object.values(err.constraints).join(', ')}`;
-      } else {
-        return `${err.property}: erro desconhecido`;
-      }
+  private async validateUserData(data: RegisterDto): Promise<string[]> {
+    const user = plainToInstance(RegisterDto, data);
+    const errors = await validate(user);
+    return errors.map(err => 
+      err.constraints
+        ? `${err.property}: ${Object.values(err.constraints).join(', ')}`
+        : `${err.property}: unknown error`
+    );
+  }
+
+  private areRequiredFieldsPresent(name?: string, email?: string, pass?: string): boolean {
+    return Boolean(name && email && pass);
+  }
+
+  private async encryptUserData(email: string, pass: string) {
+    const originalHash = new Cripto(`${email}:${pass}`).crypt();
+    const password = await new PwdEncrypt(pass).crypt();
+    const hash = await new PwdEncrypt(originalHash).crypt();
+    
+    return { password, hash, originalHash };
+  }
+
+  private sendErrorResponse(
+    res: Response,
+    status: HttpStatus,
+    message: string,
+    errors: string[] = []
+  ): Response {
+    return res.status(status).json({
+      status: 'error',
+      message,
+      ...(errors.length && { errors })
     });
-    return errorMessages;
   }
 }

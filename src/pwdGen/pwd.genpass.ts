@@ -4,63 +4,99 @@ import { DbMain } from 'src/database/db.main';
 import { UserToken } from 'src/users/login/token/user.token';
 
 @Injectable()
-@Controller("/generate")
-export class PwdGenPass {
+@Controller('/generate')
+export class PasswordGeneratorService {
+    private static readonly MAX_PASSWORD_LENGTH = 1000000;
+    private static readonly DEFAULT_PASSWORD_LENGTH = 64;
+    private static readonly ALLOWED_CHARACTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?/';
+
+    constructor(
+        private readonly dbMain: DbMain,
+        private readonly userToken: UserToken
+    ) {}
 
     @Get()
     @HttpCode(HttpStatus.METHOD_NOT_ALLOWED)
-    private async notUseGet(): Promise<object> {
+    private async handleGetRequest(): Promise<object> {
         return {
             statusCode: HttpStatus.METHOD_NOT_ALLOWED,
             response: [
-                "Você não está autorizado.",
-                "Essa rota não possui GET como método."
+                'Method not allowed',
+                'GET method is not supported for this route'
             ]
         };
     }
 
-    private async gerarSenha(quant: number = 64): Promise<string> {
-        const caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?/';
-        let senha = '';
-        for (let i = 0; i < quant; i++) {
-            const indice = Math.floor(Math.random() * caracteres.length);
-            senha += caracteres[indice];
-        }
-        return Promise.resolve(senha);
+    private async generatePassword(length: number = PasswordGeneratorService.DEFAULT_PASSWORD_LENGTH): Promise<string> {
+        const characters = PasswordGeneratorService.ALLOWED_CHARACTERS;
+        const password = Array.from(
+            { length }, 
+            () => characters.charAt(Math.floor(Math.random() * characters.length))
+        ).join('');
+        
+        return password;
     }
 
     @Post()
     @HttpCode(HttpStatus.OK)
-    private async connectGen(@Res() res: Response, @Headers('authorization') authHeader: string, @Body('email') email: string, @Query('quant') quant?: number) {
-        const userId = new UserToken();
-        const dbMain = new DbMain();
-        const tokenSecretKey: string = await dbMain.getKey(email);
-        const isValid = await userId.verifyToken(authHeader.split(' ')[1], tokenSecretKey);
+    private async generateSecurePassword(
+        @Res() res: Response,
+        @Headers('authorization') authHeader: string,
+        @Body('email') email: string,
+        @Query('quant') length?: number
+    ): Promise<Response> {
+        try {
+            await this.validateRequest(authHeader, email, length);
+            
+            const password = await this.generatePassword(length || PasswordGeneratorService.DEFAULT_PASSWORD_LENGTH);
+            
+            return res.status(HttpStatus.OK).json({
+                statusCode: HttpStatus.OK,
+                passwordGenerated: password
+            });
+        } catch (error) {
+            return this.handleError(res, error);
+        }
+    }
 
-        if (quant && quant > 1000000) {
-            const response = {
-                statusCode: HttpStatus.BAD_GATEWAY,
-                response: "Max Length is 1,000,000"
+    private async validateRequest(authHeader: string, email: string, length?: number): Promise<void> {
+        if (length && length > PasswordGeneratorService.MAX_PASSWORD_LENGTH) {
+            throw {
+                status: HttpStatus.BAD_REQUEST,
+                message: `Maximum password length is ${PasswordGeneratorService.MAX_PASSWORD_LENGTH}`
             };
-            return res.status(HttpStatus.BAD_GATEWAY).json(response);
-        };
+        }
+
+        const token = this.extractToken(authHeader);
+        const tokenSecretKey = await this.dbMain.getKey(email);
+        const isValid = await this.userToken.verifyToken(token, tokenSecretKey);
 
         if (!isValid) {
-            const response = {
-                statusCode: HttpStatus.UNAUTHORIZED,
-                response: "not valid"
+            throw {
+                status: HttpStatus.UNAUTHORIZED,
+                message: 'Invalid authentication token'
             };
-            return res.status(HttpStatus.UNAUTHORIZED).json(response);
-        };
-
-        const strongPass = await this.gerarSenha(quant || 64);
-
-        const response = {
-            statusCode: HttpStatus.OK,
-            passwordGenerated: strongPass
-        };
-
-        return res.status(HttpStatus.OK).json(response);
+        }
     }
-    
+
+    private extractToken(authHeader: string): string {
+        const [bearer, token] = authHeader.split(' ');
+        if (bearer !== 'Bearer' || !token) {
+            throw {
+                status: HttpStatus.UNAUTHORIZED,
+                message: 'Invalid authorization header format'
+            };
+        }
+        return token;
+    }
+
+    private handleError(res: Response, error: any): Response {
+        const status = error.status || HttpStatus.INTERNAL_SERVER_ERROR;
+        const message = error.message || 'Internal server error';
+
+        return res.status(status).json({
+            statusCode: status,
+            response: message
+        });
+    }
 }

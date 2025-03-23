@@ -1,9 +1,12 @@
 import { Module } from '@nestjs/common';
-import { PwdGenPass } from './pwd.genpass';
+import { PasswordGeneratorService } from './pwd.genpass';
+import { DbMain } from 'src/database/db.main';
+import { UserToken } from 'src/users/login/token/user.token';
 
 @Module({
-  controllers: [PwdGenPass],
-  providers: [PwdGenPass]
+  controllers: [PasswordGeneratorService],
+  providers: [PasswordGeneratorService, DbMain, UserToken],
+  exports: [DbMain,UserToken]
 })
 
 export class PwdGenModule {}

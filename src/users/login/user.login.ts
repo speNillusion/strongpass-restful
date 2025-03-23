@@ -5,104 +5,130 @@ import { dbConnection } from 'src/database/db.connect';
 import { DbMain } from 'src/database/db.main';
 import { UserToken } from './token/user.token';
 
+// Define types for better type safety
 interface UserResponse {
-    statusCode: Number,
-    message: string,
-    acessToken: string,
-    valid: boolean
+    statusCode: number;  // Changed from Number to number
+    message: string;
+    accessToken: string; // Fixed typo in property name
+    valid: boolean;
+}
 
+interface User {
+    email: string;
+    pass: string;
 }
 
 @Injectable()
-@Controller("/login")
+@Controller('/login')
 export class UserLogin {
-    static GetResponse: any;
+    private readonly dbMain: DbMain;
+    private readonly userToken: UserToken;
+
+    constructor() {
+        this.dbMain = new DbMain();
+        this.userToken = new UserToken();
+    }
 
     @Get()
     @HttpCode(HttpStatus.OK)
     private async login(@Headers('authorization') authHeader: string): Promise<UserResponse> {
+        const token = this.validateAuthHeader(authHeader);
+        const { email, password } = await this.extractCredentials(token);
+        const user = await this.validateUser(email, password);
+        
+        const [tokenSecretKey, clientId] = await Promise.all([
+            this.dbMain.getKey(email),
+            this.dbMain.getId(email)
+        ]);
+
+        const accessToken = await this.userToken.generateToken(clientId, tokenSecretKey);
+
+        return {
+            statusCode: HttpStatus.OK,
+            message: 'Login successful',
+            accessToken,
+            valid: true
+        };
+    }
+
+    private validateAuthHeader(authHeader: string): string {
         if (!authHeader) {
-            throw new UnauthorizedException('Token não fornecido');
+            throw new UnauthorizedException('Token not provided');
         }
 
-        const token = authHeader.split(' ')[1];
+        const [, token] = authHeader.split(' ');
         if (!token) {
-            throw new UnauthorizedException('Token inválido');
+            throw new UnauthorizedException('Invalid token format');
         }
 
+        return token;
+    }
+
+    private async extractCredentials(token: string): Promise<{ email: string; password: string }> {
         const decoded = new Cripto(token).decrypt();
-        const [email, pass] = decoded.split(':');
+        const [email, password] = decoded.split(':');
 
-        if (!email || !pass) {
-            throw new UnauthorizedException('Dados de login inválidos');
+        if (!email || !password) {
+            throw new UnauthorizedException('Invalid login credentials');
         }
 
+        return { email, password };
+    }
+
+    private async validateUser(email: string, password: string): Promise<User> {
         const user = await this.findUserByEmail(email);
         if (!user) {
-            throw new UnauthorizedException('Email não encontrado');
+            throw new UnauthorizedException('Email not found');
         }
 
-        const criptoPass = new PwdEncrypt(pass).crypt();
-        const isPasswordValid = await this.comparePasswords(await criptoPass, user.pass);
+        const encryptedPassword = await new PwdEncrypt(password).crypt();
+        const isPasswordValid = await this.comparePasswords(encryptedPassword, user.pass);
 
-        const dbMain = new DbMain();
+        if (!isPasswordValid) {
+            throw new UnauthorizedException('Invalid credentials');
+        }
 
-        const tokenSecretKey: string = await dbMain.getKey(email);
-        const clientId: number = await dbMain.getId(email);
+        return user;
+    }
 
-        const acessTk = await new UserToken().generateToken(clientId, tokenSecretKey);
-
-        if (isPasswordValid) {
-            return {
-                statusCode: HttpStatus.OK, 
-                message: 'Login bem-sucedido', 
-                acessToken: acessTk,
-                valid: true
-            };
-        } else {
-            throw new UnauthorizedException('token invalido!');
+    public async verifyAuth(auth: string): Promise<boolean> {
+        try {
+            const response = await this.login(auth);
+            return response.valid;
+        } catch {
+            return false;
         }
     }
 
-    public async GetResponse(auth): Promise<boolean> {
-        const verify = await this.login(auth);
-
-        if (verify?.valid) {
-            return true
-        } else {
-            return false
-        }
-    };
-
     @Post()
-    @HttpCode(HttpStatus.BAD_REQUEST)
+    @HttpCode(HttpStatus.METHOD_NOT_ALLOWED)
     private async notUsePost(): Promise<object> {
         return {
-            status: 400,
+            status: HttpStatus.METHOD_NOT_ALLOWED,
             response: [
-                "Você não está autorizado.",
-                "Essa rota não possui POST como método."
+                'Unauthorized access',
+                'POST method is not allowed for this route'
             ]
         };
     }
-    
 
-    private async findUserByEmail(email: string): Promise<any> {
+    private async findUserByEmail(email: string): Promise<User | null> {
         return new Promise((resolve, reject) => {
-            dbConnection.query('SELECT * FROM users WHERE email = ?', [email], (err, results) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(results[0] || null);
+            dbConnection.query(
+                'SELECT email, pass FROM users WHERE email = ?',
+                [email],
+                (err, results) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(results[0] || null);
+                    }
                 }
-            });
+            );
         });
     }
 
     private async comparePasswords(plainPassword: string, hashedPassword: string): Promise<boolean> {
-        if (plainPassword !== hashedPassword) {
-            return false;
-        }
-        return true;
+        return plainPassword === hashedPassword;
     }
 }
