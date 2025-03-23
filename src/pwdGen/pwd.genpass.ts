@@ -1,6 +1,7 @@
 import { Controller, Injectable, Headers, Get, HttpCode, HttpStatus, Post, Query, Res, Body } from '@nestjs/common';
 import { Response } from 'express';
 import { DbMain } from 'src/database/db.main';
+import { Cripto } from 'src/users/DTO/dto.cripto';
 import { UserToken } from 'src/users/login/token/user.token';
 
 @Injectable()
@@ -68,7 +69,9 @@ export class PasswordGeneratorService {
         }
 
         const token = this.extractToken(authHeader);
-        const tokenSecretKey = await this.dbMain.getKey(email);
+        const encryptedEmail = Cripto.encryptEmail(email);
+        const tokenSecretKey = await this.dbMain.getKey(encryptedEmail);
+        
         const isValid = await this.userToken.verifyToken(token, tokenSecretKey);
 
         if (!isValid) {

@@ -2,6 +2,7 @@ import { Controller, Injectable, Get, HttpCode, HttpStatus, Post, Headers, Res, 
 import { Response } from 'express';
 import { DbMain } from 'src/database/db.main';
 import { UserToken } from './login/token/user.token';
+import { Cripto } from './DTO/dto.cripto';
 
 @Injectable()
 @Controller("/admin")
@@ -45,7 +46,8 @@ export class UserGet {
         }
 
         const token = authHeader.split(' ')[1];
-        const tokenSecretKey = await this.dbMain.getKey(email);
+        const encryptedEmail = Cripto.encryptEmail(email);
+        const tokenSecretKey = await this.dbMain.getKey(encryptedEmail);
         const isValid = await this.userToken.verifyToken(token, tokenSecretKey);
 
         if (!isValid) {
