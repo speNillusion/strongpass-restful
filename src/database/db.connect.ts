@@ -2,6 +2,7 @@ import * as mysql from 'mysql2';
 import * as dotenv from 'dotenv';
 import { DbCreate } from './db.create';
 
+/* load env */
 dotenv.config();
 
 

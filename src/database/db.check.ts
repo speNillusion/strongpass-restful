@@ -4,7 +4,7 @@ export function checkDb(): Promise<boolean> {
   return new Promise((resolve, reject) => {
     dbConnection.query(
       "SHOW TABLES LIKE 'users';",
-      async (err, results: any[]) => {
+      async (err, results: string[]) => {
         if (err) {
           console.error('Erro ao verificar a tabela:', err.message);
           reject(false);

@@ -4,7 +4,7 @@ import { UserLogin } from './login/user.login';
 import { UserGet } from './user.get';
 
 @Module({
-  controllers: [UserCreate,UserLogin,/*UserGet - Em manutenção*/],
+  controllers: [UserCreate,UserLogin,UserGet],
   providers: []
 })
 

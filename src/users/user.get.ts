@@ -1,21 +1,29 @@
-import { Controller, Injectable, Get, HttpCode, HttpStatus, Post, Headers, Res } from '@nestjs/common';
+import { Controller, Injectable, Get, HttpCode, HttpStatus, Post, Headers, Res, Body } from '@nestjs/common';
 import { Response } from 'express';
 import { UserLogin } from './login/user.login';
 import { DbMain } from 'src/database/db.main';
+import { UserToken } from './login/token/user.token';
 
 @Injectable()
 @Controller("/admin")
 export class UserGet {
 
-    @Get()
+    @Post()
     @HttpCode(HttpStatus.OK)
-    private async userGet(@Headers('authorization') authHeader: string, @Res() res: Response): Promise<any> {
-        const userLogin = new UserLogin();
-        const main = new DbMain();
-        const verify = await userLogin.GetResponse(authHeader);
-        const rowUsers = await main.getDb();
+    private async getUsers(@Res() res: Response, @Headers('authorization') authHeader: string, @Body('email') email: string): Promise<any> {
+        const userId = new UserToken();
+        const dbMain = new DbMain();
+        const tokenSecretKey: string = await dbMain.getKey(email);
+        const isValid = await userId.verifyToken(authHeader.split(' ')[1], tokenSecretKey);
+        const rowUsers = await dbMain.getDb();
     
-        if (verify) {
+        if (isValid) {
+            if (email != 'admin@admin.com') {
+                return res.status(HttpStatus.UNAUTHORIZED).json({
+                    statusCode: HttpStatus.UNAUTHORIZED,
+                    response: "Você não está autorizado."
+                });
+            }
             if (rowUsers) {
                 return res.status(HttpStatus.OK).json({
                     users: [...rowUsers]
@@ -29,22 +37,21 @@ export class UserGet {
                 });
             }
         } else {
-            return res.status(HttpStatus.FORBIDDEN).json({
-                response: [
-                    "Falha na verificação do token."
-                ]
+            return res.status(HttpStatus.UNAUTHORIZED).json({
+                statusCode: HttpStatus.UNAUTHORIZED,
+                response: "Você não está autorizado."
             });
         }
     }    
 
-    @Post()
+    @Get()
     @HttpCode(HttpStatus.BAD_REQUEST)
-    private async notUsePost(@Res() res: Response): Promise<object> {
+    private async notUseGet(@Res() res: Response): Promise<object> {
         return res.status(HttpStatus.BAD_REQUEST).json({
             status: 400,
             response: [
                 "Você não está autorizado.",
-                "Essa rota não possui POST como método."
+                "Essa rota não possui GET como método."
             ]
         });
     }

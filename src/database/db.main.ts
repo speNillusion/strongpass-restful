@@ -14,13 +14,13 @@ export class DbMain {
 
   public async getDb(): Promise<any[]> {
     return new Promise((resolve, reject) => {
-      dbConnection.query('SELECT * FROM users', (err: any, rows: string[]) => {
+      dbConnection.query('SELECT * FROM users', (err: Error, rows: string[]) => {
         if (err) {
           console.error('Erro ao consultar dados:', err.message);
-          reject([]); // Caso dê erro, retorna um array vazio
+          reject([]); 
         } else {
           console.log('Dados na tabela "users":', rows);
-          resolve(rows); // Retorna os dados encontrados
+          resolve(rows); 
         }
       });
     });
@@ -28,13 +28,20 @@ export class DbMain {
 
   public async getKey(email: string): Promise<string> {
     return new Promise((resolve, reject) => {
-      dbConnection.query('SELECT * FROM users WHERE email = ?', [email], (err, results) => {
+      dbConnection.query('SELECT token_key FROM users WHERE email = ?', [email], (err, results: any[]) => {
         if (err) {
+          console.error('Error fetching token key:', err.message);
           reject(err);
-        } else {
-          let key = results[0].token_key;
-          resolve(key || null);
+          return;
         }
+        
+        if (!results || results.length === 0) {
+          resolve('');
+          return;
+        }
+
+        const key = results[0].token_key;
+        resolve(key || '');
       });
     });
   }
